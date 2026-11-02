@@ -491,3 +491,69 @@ h1,h2,h3{color:var(--gold)}
   #pause .pbtns button,#pause .pbtns .cta{flex:1 1 0;width:auto;min-width:0;min-height:48px;font-size:14px;letter-spacing:.08em;text-indent:0;padding:0 6px}
   #pause .pcard p.phint{display:none}
 }
+
+/* ===================== v13 HUD / MENU PALETTE: game-like, each element its own colour =====================
+   score = cream-white, cash = green, wanted stars = red, status pill = deep red / teal, pause = dark glass + white icon,
+   menu: primary = green, secondary = dark slate, danger (Quit) = red. Legibility: dark navy outline + soft shadow. No glow, no neon. */
+:root{--ink2:#0d1118;--cream2:#fff7e6;--cash:#7fe06a;--cash-d:#0e3a14;--star:#ff4338;--glass:rgba(12,16,22,.62);--glass-e:rgba(255,255,255,.22);--slate:rgba(28,36,48,.9);--slate-e:rgba(255,255,255,.26);--teal:#1f9d8f;--red:#c9382e;--green:#2fae5f;
+ --ol3:0 1px 0 var(--ink2),0 -1px 0 var(--ink2),1px 0 0 var(--ink2),-1px 0 0 var(--ink2),1px 1px 0 var(--ink2),-1px 1px 0 var(--ink2),0 2px 4px rgba(0,0,0,.55);
+ --ol4:0 2px 0 var(--ink2),0 -2px 0 var(--ink2),2px 0 0 var(--ink2),-2px 0 0 var(--ink2),2px 2px 0 var(--ink2),-2px 2px 0 var(--ink2),2px -2px 0 var(--ink2),-2px -2px 0 var(--ink2),0 4px 8px rgba(0,0,0,.5)}
+/* --- in-run HUD --- */
+#hud #scorebox b{color:var(--cream2);text-shadow:var(--ol4)}
+#hud #scorebox i{color:#ffd166;text-shadow:var(--ol3)}
+#hud #cash,#hud #money{color:var(--cash);text-shadow:0 1px 0 var(--cash-d),0 -1px 0 var(--cash-d),1px 0 0 var(--cash-d),-1px 0 0 var(--cash-d),1px 1px 0 var(--cash-d),-1px 1px 0 var(--cash-d),0 2px 4px rgba(0,0,0,.55)}
+#hud #cash .coin circle:first-child{fill:#58c866;stroke:#145a24}#hud #cash .coin circle:last-child{stroke:#1b7a31}
+#hud #stars path{fill:var(--star);stroke:#4a0d09;stroke-width:2.2}
+#hud #stars path.off{fill:rgba(20,24,32,.55);stroke:rgba(0,0,0,.55)}
+#btn-pause,#btns button{color:#fff;background:var(--glass);box-shadow:inset 0 0 0 1.5px var(--glass-e);opacity:.95}
+#btn-pause:hover,#btn-pause:focus-visible,#btns button:hover,#btns button:focus-visible{outline:2px solid #fff}
+#hud #word i{color:var(--cream2);background:var(--glass);border-color:var(--glass-e);text-shadow:var(--ol3)}
+#hud #word i.on{background:var(--teal);border-color:var(--ink2);color:#fff;text-shadow:0 1px 0 rgba(0,0,0,.45)}
+#tkchip{color:#bff3ec;text-shadow:var(--ol3)}#tkchip svg{color:#4fd1c0}
+/* status pill: white text on a solid colour, dark outline */
+#chip{color:#fff;background:var(--teal);box-shadow:inset 0 0 0 1.5px rgba(0,0,0,.28),0 2px 0 rgba(0,0,0,.35);text-shadow:0 1px 0 rgba(0,0,0,.45)}
+#chip[data-k=foot]{background:linear-gradient(180deg,#d9482c,#a92a1f);color:#fff;text-shadow:0 1px 0 rgba(0,0,0,.5)}
+#chip[data-k=jam]{background:#2f78b8;color:#fff}
+#chip[data-k=turbo]{background:#e4701f;color:#fff}
+#chip[data-k=x2]{background:var(--green);color:#fff}
+#chip[data-k=shield]{background:#3f7fc6;color:#fff}
+#chip[data-k=magnet]{background:#c9382e;color:#fff}
+#chip[data-k=perk]{background:var(--teal);color:#fff}
+/* centre banner (stage name, task done...): dark glass, white text, colour only for good / bad */
+#banner{background:var(--glass);box-shadow:inset 0 0 0 1.5px var(--glass-e)}
+#banner b{color:#fff;text-shadow:var(--ol3)}
+#banner.good b{color:#8ff0a0}#banner.bad b{color:#ff9a7a}#banner.place b{color:#fff}
+#hud #hint{color:var(--cream2);text-shadow:var(--ol3)}#hud #hint b{color:#fff}
+#btn-head{color:#fff;background:var(--glass);border-color:var(--glass-e);text-shadow:var(--ol3)}
+.ticking .cv,.ticking.cv{color:#9be8a7}
+/* --- buttons: primary green, secondary slate, danger red --- */
+.start,.cta{color:#fff;background:linear-gradient(180deg,#46cf78 0,#2fae5f 55%,#1f8a49 100%);box-shadow:0 4px 0 #0f4a26,0 0 0 2px var(--ink2),0 10px 18px rgba(0,0,0,.4);text-shadow:0 1px 0 rgba(0,0,0,.45)}
+.start:hover,.start:focus-visible,.cta:hover,.cta:focus-visible{background:linear-gradient(180deg,#5adb8a 0,#3bbd6d 55%,#279a55 100%);outline:none}
+.cta{box-shadow:0 3px 0 #0f4a26,0 0 0 2px var(--ink2)}
+.cta small{color:#d7f5df}
+.sec,.tb{color:#fff;background:var(--slate);border:1.5px solid var(--slate-e);text-shadow:var(--ol3)}
+.sec:hover,.sec:focus-visible,.tb:hover,.tb:focus-visible{background:#3a4658;color:#fff;text-shadow:var(--ol3);outline:none}
+.sec small{color:#9be8a7}
+#btn-quit,#btn-quit.sec{color:#fff;background:linear-gradient(180deg,#e0493d,#b32b22);border:2px solid #5a0f0b;text-shadow:0 1px 0 rgba(0,0,0,.5)}
+#btn-quit:hover,#btn-quit:focus-visible{background:linear-gradient(180deg,#ee5b4f,#c63a30);color:#fff;outline:none}
+.tchip{color:#fff;background:var(--glass);border-color:var(--glass-e);text-shadow:var(--ol3)}
+.tchip span{color:#cfd6e0}.tchip b{color:var(--cream2)}.tchip #wallet,#wallet{color:var(--cash)}
+.tchip.help{color:#fff}.tchip.help:hover,.tchip.help:focus-visible{background:#fff;color:#111;text-shadow:none}
+.buy{background:var(--green);color:#fff;text-shadow:0 1px 0 rgba(0,0,0,.4)}.buy:hover,.buy:focus-visible{background:#46cf78}
+.buy.own{background:#e9eef5;color:#111;text-shadow:none}
+.buy.eq{color:var(--cash);border-color:var(--cash);background:transparent}
+.pips i.on{background:var(--cash);border-color:var(--cash)}
+.row[aria-checked="true"] i,.row.on i{background:var(--green)}
+/* --- pause + game-over text --- */
+#pause{background:rgba(8,10,14,.7)}
+.pcard h2{color:var(--cream2);text-shadow:var(--ol4)}
+.pcard p,#pause .pcard p.phint{color:#d8dee8;text-shadow:var(--ol3)}
+.info u{background:var(--teal)}
+.info .m{color:#fff}
+.chead,#verdict,.mhead h2,#shop-tabs button[aria-selected="true"]{color:var(--cream2);text-shadow:var(--ol3)}
+#crows .v{color:#fff}#crows .v.hot{color:#ffb347}
+#cstats .sc-score b{color:var(--cream2)}#cstats .sc-score{border-left-color:var(--cream2)}
+#cstats .sc-best b{color:#6fd6ca}#cstats .sc-best{border-left-color:var(--teal)}
+#cwallet{color:var(--cash)}
+.mbody h3{color:#8fd6cf}
+.hctrl b,.how li::before{color:#ffd166}
