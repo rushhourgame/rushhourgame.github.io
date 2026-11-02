@@ -175,7 +175,7 @@
     if (tk.doneFlash > 0) tk.doneFlash -= dt;
     const t = S.LOCS[tk.id].task;
     if (t.kind === 'stars' && !S.taskDone(tk.id) && g.state === 'play') {
-      if (Math.min(5, Math.max(1, Math.ceil((g.threat || 1) / 2))) >= 5) { tk.acc += dt; if (tk.acc >= 1) { const w = Math.floor(tk.acc); tk.acc -= w; if (S.taskAdd(tk.id, w) && S.taskDone(tk.id)) tkProgressed(g, 'HEAT', 1); } }
+      if ((g.stars | 0) >= 5) { tk.acc += dt; if (tk.acc >= 1) { const w = Math.floor(tk.acc); tk.acc -= w; if (S.taskAdd(tk.id, w) && S.taskDone(tk.id)) tkProgressed(g, 'HEAT', 1); } }
     } else if (t.kind === 'combo' && !S.taskDone(tk.id)) {
       if (g.combo > tk.bestCombo) { tk.bestCombo = g.combo; if (g.combo >= t.n) { S.taskAdd(tk.id, g.combo); tkProgressed(g, 'COMBO', 1); } }
     }

@@ -253,8 +253,8 @@
           try {
             Sfx.setMode(G.state === 'play' && !G.attract ? 'play' : G.state === 'dead' || G.state === 'over' ? 'over' : 'menu');
             if (G.state === 'play' && !G.attract) {
-              const stars = clamp(Math.ceil((G.threat || 1) / 2), 1, 5);
-              if (lastStars && stars > lastStars) Sfx.siren(stars);
+              const stars = G.stars | 0;
+              if (stars > lastStars) Sfx.siren(stars);
               lastStars = stars;
             }
             Sfx.setIntensity(G.state === 'play' || G.attract ? (G.threat || 1) : 1, clamp((G.speed - 20) / 22, 0, 1));
@@ -281,7 +281,7 @@
     draw(dt) { Render.frame(G, dt || 1 / 60); HUD.update(dt || 1 / 60, paused); },
     start(opts) { wake(); syncUp(); G.runSaved = false; G.reset(false, opts || {}); paused = false; G.paused = false; G.hint = false; },
     sim(secs, opts) { frozen = true; G.reset(false, Object.assign({ god: true, noflash: true }, opts)); G.hint = false; const n = Math.round(secs / DT); for (let i = 0; i < n; i++) { G.step(DT); G.events.length = 0; } frozen = false; return { time: G.time, score: Math.floor(G.score), pred: G.brain.predPct(), godHits: G.godHits || 0, waves: G.waveLog.length }; },
-    state() { const p = G.p; return { state: G.state, lane: p.lane, y: p.y, slide: p.slide, grounded: p.grounded, score: Math.floor(G.score), time: G.time, coins: G.coins, threat: G.threat, foot: !!p.foot, footT: G.footT, bm: (window.__bm && window.__bm()) || null, inv: p.inv, items: (G.items||[]).map(i=>i.kind), pred: G.brain.predPct(), blind: G.blindT, mult: G.mult, combo: G.combo, paused, W, H, stats: glOK ? Render.stats() : null }; },
+    state() { const p = G.p; return { state: G.state, lane: p.lane, y: p.y, slide: p.slide, grounded: p.grounded, score: Math.floor(G.score), time: G.time, coins: G.coins, threat: G.threat, heat: G.heat, stars: G.stars, foot: !!p.foot, footT: G.footT, bm: (window.__bm && window.__bm()) || null, inv: p.inv, items: (G.items||[]).map(i=>i.kind), pred: G.brain.predPct(), blind: G.blindT, mult: G.mult, combo: G.combo, paused, W, H, stats: glOK ? Render.stats() : null }; },
     pause: setPaused,
     loc(i) { Save.data.loc = i; if (Save.data.locs.indexOf(i) < 0) Save.data.locs.push(i); syncUp(); }
   };

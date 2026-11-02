@@ -45,7 +45,7 @@
     g.p = { lane: 1, prevLane: 1, x: 1, vx: 0, y: 0, vy: 0, grounded: true, slide: 0, slideBuf: 0, jumpBuf: 0, fast: false, phase: 0,
             inv: 0, dead: false, foot: false, mvFrom: 1, mvT: 9, mvLane: 1, lean: 0, inLane: [-9, -9, -9], slideStart: -9, jumpStart: -9, landT: -9, switchT: -9 };
     g.camX = 0;
-    g.footT = 0; g.footK = 0; g.bikeAnimT = 99; g.regainT = 99; g.bikeAt = 0; g.bikesLost = 0; g.footSecs = 0;
+    g.heat = 0; g.stars = 0; g.threat = 1; g.riskT = -99; g.topT = 0; g.coolPopT = -99; g.footT = 0; g.footK = 0; g.bikeAnimT = 99; g.regainT = 99; g.bikeAt = 0; g.bikesLost = 0; g.footSecs = 0;
     g.taunt = { text: 'NEW RUNNER DETECTED', t: 0, next: 3.4 };
     g.ticker = { text: 'NEW RUNNER DETECTED', t: 0 };
     g.bz = [-10, 6];
@@ -94,11 +94,12 @@
     if ((r -= w.barrier) < 0) return 'barrier';
     return 'beam';
   }
-  Game.addObstacle = function (type, lane, z, wave, depthOverride) {
+  Game.addObstacle = function (type, lane, z, wave, depthOverride, forceCop) {
     const o = { type, lane, z, kind: 'obs', wave, judgedF: false, judgedB: false, minClear: Infinity, slideTTI: null, seed: Math.floor(rnd() * 9999) };
     if (type === 'wall') { o.h = 2.3; o.depth = depthOverride || (this.time < 15 ? 2.5 + rnd() * 3 : 2.5 + rnd() * (this.time < 40 ? 7 : 11)); }
     else if (type === 'barrier') { o.h = 0.85; o.depth = 1.0; }
     else { o.h = 2.3; o.bottom = 0.64; o.depth = 0.9; }
+    if (type === 'wall' && o.depth < 5.2) { o.cop = !!forceCop || rnd() < this.copChance(); if (o.cop) o.vis = 'police'; }   // car-sized walls are police roadblocks only when the heat says so
     this.obs.push(o);
     return o;
   };
@@ -138,11 +139,17 @@
       lanes.forEach((l, i) => { cells[l] = pickType(g, i === 1 && n === 2 && false); });
       if (n === 2 && cells[lanes[0]] === 'wall' && cells[lanes[1]] === 'wall') cells[lanes[1]] = 'barrier';
     }
+    // heat: a police roadblock swaps in for one of the blockers (never adds a lane, never touches a timing trap)
+    wave.copLane = -1;
+    if (!wave.chain && rnd() < g.copWaveChance()) {
+      const occ = [0, 1, 2].filter(l => cells[l]), hasWall = occ.some(l => cells[l] === 'wall');
+      if (occ.length && !hasWall) { wave.copLane = occ[Math.floor(rnd() * occ.length)]; cells[wave.copLane] = 'wall'; }
+    }
     // spawn the obstacles
     let free = [];
     for (let l = 0; l < 3; l++) {
       if (cells[l]) {
-        const o = g.addObstacle(cells[l], l, z, wave, cells[l] === 'wall' ? bigDepth : null);
+        const isCop = l === wave.copLane, o = isCop ? g.addObstacle('wall', l, z, wave, 3.4 + rnd() * 1.2, true) : g.addObstacle(cells[l], l, z, wave, cells[l] === 'wall' ? bigDepth : null);
         wave.depth = Math.max(wave.depth || 0, o.depth);
         if (cells[l] === 'barrier' && rnd() < 0.7) g.coinArc(l, z + 0.5);
       } else free.push(l);
@@ -170,6 +177,37 @@
     g.waves.push(wave);
     g.waveLog.push({ id: wave.id, t: +g.time.toFixed(2), mode: wave.mode, bet: wave.bet, conf: +wave.conf.toFixed(2), c0: c, cells: cells.slice(), act: +act.toFixed(2), blind });
     return wave;
+  };
+
+  /* ------------------------------------------------------------ heat (the wanted level): earned by risky riding, never by the clock
+     heat 0..5 (float); stars = floor(heat). Near miss +0.25, bump +0.6, crash +0.9 (+0.3 into a roadblock), on foot after a crash +1 (once per wreck),
+     sustained top speed / boost +0.06/s (capped so speed alone tops out at 2.5 stars, boost at 3). Clean for 6 s -> cools 0.1/s (0.04/s on foot). */
+  const HEAT_CLEAN = 6, HEAT_COOL = 0.1, HEAT_COOL_FOOT = 0.04, HEAT_SPEED = 0.06, HEAT_TOP_SPEED = 37;
+  const COP_CAR = [0.04, 0.18, 0.34, 0.52, 0.7, 0.88], COP_WAVE = [0, 0.10, 0.18, 0.28, 0.38, 0.50];
+  Game.copChance = function () { return COP_CAR[Math.min(5, this.stars | 0)]; };       // chance a car-sized wall is a police car
+  Game.copWaveChance = function () { return COP_WAVE[Math.min(5, this.stars | 0)]; };   // chance a wave gets an extra police roadblock
+  Game.addHeat = function (n, cap) {
+    const g = this; cap = cap === undefined ? 5 : cap;
+    if (g.heat >= cap) return false;
+    g.heat = Math.min(cap, g.heat + n); g.riskT = g.time;
+    g.heatSync(true); return true;
+  };
+  Game.heatSync = function (rising) {
+    const g = this, s = Math.min(5, Math.floor(g.heat + 1e-6));
+    if (s !== g.stars) {
+      const up = s > g.stars; g.stars = s;
+      if (up && !g.attract) { g.pop('WANTED \u2191', g.W2 || 160, 60, '#ff3b4e', 1, 0.9); g.emit('wanted', { stars: s }); }
+      else if (!up && !g.attract && g.time - g.coolPopT > 2) { g.coolPopT = g.time; g.pop('HEAT COOLING', g.W2 || 160, 60, '#8fc3e8', 1, 0.9); }
+    }
+    g.threat = s === 0 ? 1 : s * 2;                      // 1..10 scale used by audio layers / helicopter (stars = ceil(threat/2))
+  };
+  Game.heatStep = function (dt) {
+    const g = this, p = g.p;
+    const top = g.boostK > 0.5 || g.speedS >= HEAT_TOP_SPEED;
+    g.topT = top && !p.foot && !p.dead ? g.topT + dt : 0;
+    if (g.topT > 2.5) g.addHeat(HEAT_SPEED * dt, g.boostK > 0.5 ? 3 : 2.5);        // sustained top speed / boost
+    if (g.heat > 0 && g.time - g.riskT > HEAT_CLEAN) { g.heat = Math.max(0, g.heat - (p.foot ? HEAT_COOL_FOOT : HEAT_COOL) * dt); g.heatSync(false); }
+    else g.heatSync(false);
   };
 
   Game.coinRow = function (lane, z, n, step) {
@@ -440,7 +478,7 @@
     for (const b of g.boards) if (!b.text && b.z < 64) { b.text = g.taunt.text; b.flick = 0.4; }
 
     // ---- audio intensity
-    g.threat = Math.min(10, br.threat(g.time) + Math.round(4 * g.footK));   // on foot: the cops close in
+    g.heatStep(dt);    // wanted level (g.heat / g.stars / g.threat) comes from risky riding, not from time
 
     // ---- cull
     g.obs = g.obs.filter(o => o.z + o.depth > -14);
@@ -511,7 +549,7 @@
 
   Game.nearMiss = function (o, how) {
     const g = this;
-    g.brain.log.nearMiss++; g.nearCount++;
+    g.brain.log.nearMiss++; g.nearCount++; g.addHeat(0.25);
     g.addCombo(2); g.mEvent('near');
     g.nearStreak = g.clock - g.lastNearT < 6 ? Math.min(8, g.nearStreak + 1) : 1; g.lastNearT = g.clock;
     const pts = CX * (250 + 125 * (g.nearStreak - 1)) * g.mult * (1 + (g.perk.near || 0)); g.score += pts;
@@ -526,12 +564,13 @@
     const g = this, p = g.p;
     if (g.shieldT > 0 && !g.attract && p.inv <= 0) {                 // shield: absorbs exactly one hit, then a short grace window
       g.shieldT = 0; p.inv = 1.3; g.shake(2); g.fx.flash = 0.5; g.fx.freeze = 0.05; g.fx.zoom = 0.8;
+      g.addHeat(0.4 + (o && o.vis === 'police' ? 0.3 : 0));
       const sp = g.playerScreen(); g.pop('SHIELD BROKE', sp.x, sp.y - 40, '#8fc3e8', 1, 0.9); g.emit('shieldhit'); return;
     }
     // side-swipe? bounce back to the lane we came from instead of dying
     const lateral = Math.abs(p.x - p.lane) > 0.1 || (g.clock - p.switchT < 0.12);
     if (lateral && p.prevLane !== p.lane && !laneBlocked(g, p.prevLane, -1.2, 1.2)) {
-      p.lane = p.prevLane; p.inv = 0.7; g.brain.log.bumps++;
+      p.lane = p.prevLane; p.inv = 0.7; g.brain.log.bumps++; g.addHeat(0.6 + (o && o.vis === 'police' ? 0.3 : 0));
       g.combo = 0; g.comboP = 0; g.comboT = 0;
       g.shake(3); g.fx.hurt = 1; g.fx.freeze = 0.06; g.fx.chroma = 0.7;
       const sp = g.playerScreen(); g.pop('BUMP!', sp.x, sp.y - 40, '#ff3b4e', 1, 0.8);
@@ -539,6 +578,7 @@
       g.emit('bump');
       return;
     }
+    g.addHeat(0.9 + (o && o.vis === 'police' ? 0.3 : 0));            // a real crash into traffic / a roadblock
     if (g.god) { p.inv = 0.5; g.emit('godhit'); g.godHits = (g.godHits || 0) + 1; return; }
     if (g.perk.autododge && !g.autoUsed) { g.autoUsed = true; g.bailOut(o, 'AUTO-DODGE'); return; }
     if (g.up.bail > 0 && !g.bailUsed) { g.bailOut(o); return; }
@@ -550,7 +590,7 @@
   Game.FOOT_MAX = 22;
   Game.loseBike = function (o) {
     const g = this, p = g.p;
-    p.foot = true; g.footT = g.FOOT_MAX; g.bikeAnimT = 0; g.regainT = 99; g.bikesLost++; g.bikeAt = g.time + 30 + rnd() * 15;   // first bike key no sooner than 30-45 s after the wreck
+    p.foot = true; g.addHeat(1); g.footT = g.FOOT_MAX; g.bikeAnimT = 0; g.regainT = 99; g.bikesLost++; g.bikeAt = g.time + 30 + rnd() * 15;   // first bike key no sooner than 30-45 s after the wreck
     p.inv = 1.5; g.combo = 0; g.comboP = 0; g.comboT = 0; p.slide = 0; p.slideBuf = 0;
     if (o) g.obs = g.obs.filter(ob => ob !== o);
     g.shake(4.5); g.fx.hurt = 1; g.fx.freeze = 0.1; g.fx.flash = 0.7; g.fx.chroma = 0.8;

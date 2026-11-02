@@ -73,6 +73,8 @@
       else if (/^OUTSMARTED/.test(T)) banner('Outsmarted', 'good');
       else if (/^DAILY/.test(T)) banner('Daily done', 'good');
       else if (/^OUTRAN/.test(T)) banner('Outran rival', 'good');
+      else if (/^WANTED/.test(T)) banner('Wanted \u2191', 'bad');
+      else if (/^HEAT COOLING/.test(T)) banner('Heat cooling', '');
       else if (/^BIKE WRECKED/.test(T)) banner('On foot', 'bad');
       else if (/^BIKE BACK/.test(T)) banner('Bike back', 'good');
       else if (/^BAILED|^BAIL/.test(T)) banner('Bailed out', '');
@@ -120,7 +122,7 @@
     setText('score', el.score, num(st === 'dead' ? (G.finalPts || G.pts) : G.pts));
     setText('mult', el.mult, G.mult >= 3 ? '\u00D7' + Math.floor(G.mult) : '');       // combo: a small number, only from x3
     // wanted stars
-    const stars = clamp(Math.ceil((G.threat || 1) / 2), 1, 5);
+    const stars = clamp(G.stars | 0, 0, 5);          // stars = heat
     for (let i = 0; i < 5; i++) { const on = i < stars; if (last['s' + i] !== on) { last['s' + i] = on; el.starsP[i].classList.toggle('off', !on); } }
     setCls('t_jamstars', el.stars, 'jam', blind);
     // jammer desaturation dip (only on grab, ~0.8 s)

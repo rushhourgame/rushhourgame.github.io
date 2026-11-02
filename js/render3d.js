@@ -1176,7 +1176,7 @@
         if (o.type === 'wall') {
           kind = 'veh'; e = acquire('veh');
           const d = o.depth;
-          if (d < 5.2) { const q = r(); const k = q < .34 ? 'taxi' : q < .62 ? 'police' : 'sedan'; setVeh(e, k, k === 'sedan' ? PAINTS[(r() * PAINTS.length) | 0] : '#ffffff', clamp(d + .2, 3.2, 5.4), 1.18, 1.3); }
+          if (d < 5.2) { const q = r(); const k = o.cop ? 'police' : q < .45 ? 'taxi' : 'sedan'; setVeh(e, k, k === 'sedan' ? PAINTS[(r() * PAINTS.length) | 0] : '#ffffff', clamp(d + .2, 3.2, 5.4), 1.18, 1.3); }
           else if (d < 7.2) setVeh(e, 'van', VAN_PAINTS[(r() * VAN_PAINTS.length) | 0], d + .1, 1, 1);
           else if (d < 11.5) setVeh(e, 'truck', ['#2d4166', '#7b2b27', '#d9d7cf', '#3d5648'][(r() * 4) | 0], d + .1, 1, 1);
           else setVeh(e, 'bus', '#e6e4dc', d + .1, 1, 1);
