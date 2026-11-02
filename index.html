@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#14161b">
+<title>Rush Hour — Lagos Courier Chase</title>
+<meta name="description" content="A 3D Lagos courier chase. Deliver, dodge, jump, slide — and get paid.">
+<meta property="og:title" content="Rush Hour">
+<meta property="og:description" content="Deliver. Dodge. Get paid.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%2314161b'/%3E%3Cpath d='M16 5l3.4 7 7.6 1-5.6 5.2 1.5 7.6L16 22l-6.9 3.8 1.5-7.6L5 13l7.6-1z' fill='%23fff'/%3E%3C/svg%3E">
+<script>(function(){var d=document.documentElement,m=window.matchMedia;try{if((m&&m('(pointer:coarse)').matches)||(navigator.maxTouchPoints>0&&m&&!m('(hover:hover)').matches))d.className+=' touch';}catch(e){}})();</script>
+<link rel="stylesheet" href="style.css?v=12">
+</head>
+<body>
+<canvas id="game" aria-label="Rush Hour game view" role="img"></canvas>
+
+<div id="hud" class="hidden" aria-live="off">
+  <div id="hbar">
+    <div id="scorebox" aria-label="Score"><b id="score">0</b><i id="mult"></i></div>
+    <div id="wanted" aria-label="City threat level"><svg id="stars" viewBox="0 0 150 30" aria-hidden="true"></svg></div>
+    <div id="hright">
+      <div id="cash" aria-label="Cash"><svg class="coin" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="8.6" fill="#d9a93f" stroke="#7a5a14" stroke-width="1.4"/><circle cx="10" cy="10" r="5.6" fill="none" stroke="#8a6a1c" stroke-width="1.1"/></svg><span id="money">₦0</span></div>
+      <button id="btn-pause" type="button" aria-label="Pause (P)"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="5" width="4" height="14" rx="1" fill="currentColor"/><rect x="14" y="5" width="4" height="14" rx="1" fill="currentColor"/></svg></button>
+    </div>
+  </div>
+  <div id="hrow">
+    <div id="itemrow" class="hidden"><span id="word"></span><span id="tkchip"></span></div>
+    <span id="chip" class="hidden"></span>
+  </div>
+  <div id="banner"><b id="bn-t"></b></div>
+  <div id="toasts"></div>
+  <div id="hint" class="hidden"></div>
+  <button id="btn-head" type="button" class="hidden" aria-label="Boost start"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5l8 7-8 7zM12 5l8 7-8 7z" fill="currentColor"/></svg><span>Boost start</span></button>
+</div>
+
+<div id="title" class="screen">
+  <header class="tbar">
+    <div class="tchip" title="Cash"><b id="wallet">₦0</b></div>
+    <div class="sp"></div>
+    <div class="tchip"><span>Best</span><b id="best">0</b></div>
+    <button id="btn-help" type="button" class="tchip help" aria-label="How to play">?</button>
+  </header>
+  <main class="thero">
+    <h1><span>Rush</span> <span>Hour</span></h1>
+    <p class="tag">Deliver. Dodge. Get paid.</p>
+  </main>
+  <footer class="tact">
+    <button id="btn-start" type="button" class="start"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4.5v15l13-7.5z" fill="currentColor"/></svg><span>Start</span></button>
+    <div class="trow">
+      <button id="btn-chars" type="button" class="tb"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.8" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M4.5 20.5c0-4.2 3.3-6.6 7.5-6.6s7.5 2.4 7.5 6.6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg><span>Characters</span></button>
+      <button id="btn-loc" type="button" class="tb" aria-label="Choose location"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-6.5-6.1-6.5-11a6.5 6.5 0 0 1 13 0c0 4.9-6.5 11-6.5 11z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><circle cx="12" cy="10" r="2.4" fill="none" stroke="currentColor" stroke-width="1.8"/></svg><span>Locations</span></button>
+      <button id="btn-settings" type="button" class="tb"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3.2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M12 2.8v3M12 18.2v3M2.8 12h3M18.2 12h3M5.5 5.5l2.1 2.1M16.4 16.4l2.1 2.1M18.5 5.5l-2.1 2.1M7.6 16.4l-2.1 2.1" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg><span>Settings</span></button>
+    </div>
+  </footer>
+  <span id="loc-name" hidden>Lagos Island</span>
+</div>
+
+<div id="pause" class="screen hidden"><div class="pcard"><h2>Paused</h2><div id="pinfo" class="info"></div><div class="pbtns"><button id="btn-resume" type="button" class="cta">Resume</button><button id="btn-restart" type="button" class="sec">Restart</button><button id="btn-quit" type="button" class="sec">Quit to menu</button></div><p class="phint">P or Esc also resumes</p></div></div>
+
+<div id="over" class="screen hidden">
+  <div id="wasted"><span id="wtxt">Wasted</span></div>
+  <div id="card">
+    <div class="chead"><span>How the city read you</span><span id="csub"></span></div>
+    <div id="cstats"></div>
+    <div id="crows"></div>
+    <div id="lanes"></div>
+    <div id="verdict"></div>
+    <div id="oinfo" class="info"></div>
+    <div id="tip"></div>
+    <div id="cwallet"></div>
+    <div class="cfoot">
+      <span id="cscore" class="hidden"></span><i id="cnew" class="hidden"></i>
+      <button id="btn-retry" type="button" class="cta">Try again <small>(Space)</small></button>
+    </div>
+  </div>
+  <div class="oa"><button id="btn-home" type="button" class="sec">Menu</button><button id="btn-chars-over" type="button" class="sec"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.8" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M4.5 20.5c0-4.2 3.3-6.6 7.5-6.6s7.5 2.4 7.5 6.6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg><span>Characters</span></button></div>
+</div>
+
+<div id="shop" class="screen modal hidden" role="dialog" aria-label="Characters">
+  <div class="mcard">
+    <div class="mhead"><h2>Characters</h2><div class="wal"><small>Cash</small><b id="shop-wallet">₦0</b></div><button id="shop-close" type="button" class="sec close" aria-label="Close characters">Back</button></div>
+    <div id="shop-tabs" role="tablist"><button type="button" role="tab" data-tab="chars" aria-selected="true">Characters</button><button type="button" role="tab" data-tab="loc" aria-selected="false">Locations</button><button type="button" role="tab" data-tab="up" aria-selected="false">Upgrades</button></div>
+    <div id="hero" class="hidden"><canvas id="hero-cv" width="800" height="400" aria-label="Character preview"></canvas><div class="hl"><span class="tier" id="hero-tier"></span><b id="hero-name"></b></div></div>
+    <div class="mbody scroll" id="shop-body"></div>
+  </div>
+</div>
+
+<div id="howto" class="screen modal hidden" role="dialog" aria-label="How to play">
+  <div class="mcard narrow">
+    <div class="mhead"><h2>How to play</h2><button id="howto-close" type="button" class="sec close" aria-label="Close how to play">Done</button></div>
+    <div class="mbody scroll">
+      <ul class="how">
+        <li>The city learns your lane and sets the roadblock where you will be. Stay unpredictable.</li>
+        <li>Steer into cash and letters to collect them. Nothing comes to you by itself.</li>
+        <li>Score is how far you run. Cash is what you grab. Cash unlocks characters and upgrades.</li>
+        <li>Spell the word, finish missions, ride ramps and turbo pads. Ten locations to unlock, new music every run.</li>
+        <li>Lose the bike and you run on foot. A bike key shows up on the road now and then: steer into it to ride again.</li>
+      </ul>
+      <div class="hctrl kb"><span><b>← →</b> move</span><span><b>↑</b> jump</span><span><b>↓</b> slide</span><span><b>P</b> pause</span><span><b>M</b> mute</span></div>
+      <div class="hctrl touch"><span><b>Swipe</b> to move</span><span><b>Swipe up</b> jump</span><span><b>Swipe down</b> slide</span></div>
+    </div>
+  </div>
+</div>
+
+<div id="settings" class="screen modal hidden" role="dialog" aria-label="Settings">
+  <div class="mcard narrow">
+    <div class="mhead"><h2>Settings</h2><button id="set-close" type="button" class="sec close" aria-label="Close settings">Done</button></div>
+    <div class="mbody">
+      <button type="button" class="row" data-set="master" role="switch"><span>Sound</span><i></i></button>
+      <button type="button" class="row" data-set="music" role="switch"><span>Music</span><i></i></button>
+      <button type="button" class="row" data-set="sfx" role="switch"><span>Effects</span><i></i></button>
+      <button type="button" class="row" data-set="haptics" role="switch"><span>Vibration</span><i></i></button>
+    </div>
+  </div>
+</div>
+
+<div id="btns">
+  <button id="btn-mute" type="button" aria-label="Toggle sound (M)" title="Sound (M)"><svg viewBox="0 0 24 24"><path d="M4 9v6h4l5 4V5L8 9z" fill="currentColor"/><path class="w" d="M16 8.5a5 5 0 0 1 0 7M18.5 6a8.5 8.5 0 0 1 0 12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
+  <button id="btn-gear" type="button" aria-label="Settings" title="Settings"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 2.8v3M12 18.2v3M2.8 12h3M18.2 12h3M5.5 5.5l2.1 2.1M16.4 16.4l2.1 2.1M18.5 5.5l-2.1 2.1M7.6 16.4l-2.1 2.1" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
+  <button id="btn-full" type="button" aria-label="Toggle fullscreen (F)" title="Fullscreen (F)"><svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
+</div>
+<noscript><p style="color:#fff;font-family:sans-serif;text-align:center">Rush Hour needs JavaScript and WebGL.</p></noscript>
+<div id="nogl" class="screen hidden"><div class="pcard"><h2>WebGL unavailable</h2><p>This game needs a browser with WebGL enabled.</p></div></div>
+<script src="js/vendor/three.min.js?v=12"></script>
+<script src="js/save.js?v=12"></script>
+<script src="js/audio.js?v=12"></script>
+<script src="js/ai.js?v=12"></script>
+<script src="js/stages.js?v=12"></script>
+<script src="js/game.js?v=12"></script>
+<script src="js/features.js?v=12"></script>
+<script src="js/chars3d.js?v=12"></script>
+<script src="js/render3d.js?v=12"></script>
+<script src="js/hud.js?v=12"></script>
+<script src="js/shop.js?v=12"></script>
+<script src="js/main.js?v=12"></script>
+</body>
+</html>
