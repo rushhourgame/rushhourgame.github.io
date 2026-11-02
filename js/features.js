@@ -106,7 +106,7 @@
       g.nextRampAt = g.time + 20 + rnd() * 14;
       g.items.push({ kind: 'ramp', lane: fl, z: z + 0.5, depth: 3.4, used: false, taken: false });
       const V = g.JUMP_V * 1.55;
-      for (let i = 1; i <= 7; i++) { const t = i * 0.115; g.coinsL.push({ lane: fl, z: z + 0.9 + v * t, y: V * t - g.GRAV * t * t / 2 + 0.55, taken: false, kind: 'coin', ph: rnd() * 6 }); }
+      for (let i = 1; i <= 7; i++) { const t = i * 0.115; g.coinsL.push({ lane: fl, z: z + 0.5 + 3.4 + 0.4 + v * t, y: g.RAMP_H + V * t - g.GRAV * t * t / 2 + 0.55, taken: false, kind: 'coin', ph: rnd() * 6 }); }
       wave.noCoins = true; wave.depth = (wave.depth || 1) + v * 0.55;
     } else if (g.time >= g.nextPadAt) {
       // 3) a turbo pad on the road
@@ -201,7 +201,7 @@
       if (alive('lockbox') || wave.noCoins) return false; tk.nextAt = g.time + 36 + rnd() * 16; g.nextRampAt = Math.max(g.nextRampAt, g.time + 18);
       g.items.push({ kind: 'ramp', lane: fl, z: z + 0.5, depth: 3.4, used: false, taken: false });
       const V = g.JUMP_V * 1.55;
-      for (let i = 1; i <= 7; i++) { const t = i * 0.115, y = V * t - g.GRAV * t * t / 2 + 0.55, zc = z + 0.9 + v * t; if (i === 4) g.items.push({ kind: 'lockbox', lane: fl, z: zc, y, taken: false }); else g.coinsL.push({ lane: fl, z: zc, y, taken: false, kind: 'coin', ph: rnd() * 6 }); }
+      for (let i = 1; i <= 7; i++) { const t = i * 0.115, y = g.RAMP_H + V * t - g.GRAV * t * t / 2 + 0.55, zc = z + 0.5 + 3.4 + 0.4 + v * t; if (i === 4) g.items.push({ kind: 'lockbox', lane: fl, z: zc, y, taken: false }); else g.coinsL.push({ lane: fl, z: zc, y, taken: false, kind: 'coin', ph: rnd() * 6 }); }
       wave.noCoins = true; wave.depth = (wave.depth || 1) + v * 0.55; return true;
     }
     return false;
@@ -296,11 +296,20 @@
           g.pop('TURBO', g.W2 || 160, 66, '#f0b24a', 1.3, 1.2); g.fx.speedPulse = 1; g.fx.zoom = 0.8; g.emit('boost');
         }
       } else if (it.kind === 'ramp') {
-        if (!p.foot && !it.used && it.z <= 0.45 && it.z + it.depth >= 0 && ax < 0.62 && p.y < 0.6 && !p.dead) {
-          it.used = true; g.rampCount++; g.mEvent('ramp');
-          p.vy = g.JUMP_V * 1.55; p.y = 0.02; p.grounded = false; p.fast = false; p.jumpStart = g.clock; p.slide = 0; p.slideBuf = 0; g.rampAir = true;
-          g.shake(0.8); g.fx.zoom = 0.7; g.emit('ramp');
-          g.pop('AIR TIME!', g.W2 || 160, 66, '#fff', 1.2, 1.1);
+        // the player rides UP the wedge: y follows the slope (centre height = mean of the front and rear contact points, body pitched to match), then launches off the top edge
+        const s = -it.z, hl = p.foot ? 0.28 : 0.5, H = g.RAMP_H, hAt = u => H * Math.max(0, u) / it.depth;      // slope line (extended past the top edge so the body keeps its pitch until it leaves)
+        if (p.ramp === it && (p.dead || ax > 1.0)) { p.ramp = null; p.grounded = false; p.vy = 0; p.pitch = 0; }                 // died / swerved off the side
+        else if (!p.ramp && !it.used && !p.dead && ax < 0.62 && s > -hl && s < it.depth && p.y <= (hAt(s + hl) + hAt(s - hl)) / 2 + 0.02 && (p.grounded ? p.y < 0.6 : true)) p.ramp = it;   // reached the slope (walked/rode in, or dropped/jumped onto it): the surface stops you
+        if (p.ramp === it) {
+          if (s >= it.depth) {                                                                                                   // top edge: launch with air time
+            it.used = true; p.ramp = null; g.rampCount++; g.mEvent('ramp');
+            p.vy = g.JUMP_V * 1.55; p.y = H; p.grounded = false; p.fast = false; p.jumpStart = g.clock; p.slide = 0; p.slideBuf = 0; g.rampAir = true; p.pitch = 0;
+            g.shake(0.8); g.fx.zoom = 0.7; g.emit('ramp');
+            g.pop('AIR TIME!', g.W2 || 160, 66, '#fff', 1.2, 1.1);
+          } else {
+            const yF = hAt(s + hl), yR = hAt(s - hl);
+            p.y = (yF + yR) / 2; p.pitch = Math.atan2(yF - yR, 2 * hl); p.vy = 0; p.grounded = true;
+          }
         }
       }
     }

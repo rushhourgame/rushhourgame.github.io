@@ -464,7 +464,7 @@
     rig.rotation.x = pc.rigX; rig.position.y = pc.rigY; rig.position.z = pc.rigZ; torso.rotation.x = pc.torso + hb * .8; rig.position.y = pc.rigY + (dead ? 0 : vis.sy * .75 + hb * .6); torso.rotation.z = dead ? 0 : -pc.bank * .55;
     lL.th.rotation.x = pc.thL; lL.kn.rotation.x = -pc.knL; lR.th.rotation.x = pc.thR; lR.kn.rotation.x = -pc.knR;
     aL.sh.rotation.x = pc.arL; aL.el.rotation.x = pc.elL; aR.sh.rotation.x = pc.arR; aR.el.rotation.x = pc.elR;
-    root.rotation.z = pc.bank; root.rotation.y = pc.yaw; root.rotation.x = pitch + vis.gx.pitch; root.position.y += vis.gx.lift; rig.rotation.y = vis.gx.ry; torso.rotation.y = vis.gx.tw + (dead ? 0 : pc.twist); torso.rotation.z += dead ? 0 : (pc.sway || 0);
+    root.rotation.z = pc.bank; root.rotation.y = pc.yaw; vis.rp = p.ramp ? (p.pitch || 0) : (vis.rp || 0) * Math.exp(-dt * 7); root.rotation.x = pitch + vis.gx.pitch + (isFinite(vis.rp) ? vis.rp : 0); root.position.y += vis.gx.lift; rig.rotation.y = vis.gx.ry; torso.rotation.y = vis.gx.tw + (dead ? 0 : pc.twist); torso.rotation.z += dead ? 0 : (pc.sway || 0);
     if (!dead && (air || cr > 0)) {   // additive jump poses applied after smoothing so the crouch / tuck / squash stay crisp
       const lg = foot ? 1 : .35, dn = cw * (foot ? .2 : .1) + cr * (foot ? .2 : .1), th = (cw * .5 + cr * .5 + tk * .5) * lg, kn = (cw * .7 + cr * .6 + tk * .55) * lg;
       rig.position.y -= dn; torso.rotation.x -= cw * .25 + cr * .2 + tk * .15;

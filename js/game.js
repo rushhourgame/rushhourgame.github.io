@@ -11,9 +11,10 @@
   const proj = z => 1 / (1 + z / K);
   const WALL_H = { sedan: 1.7, taxi: 1.8, police: 1.8, van: 2.5, truck: 3.4, bus: 3.4 };
   WALL_H.undefined = 2.5;
+  const RAMP_H = 1.25;                // height of the ramp wedge at its top edge (must match the wedge mesh in render3d.js buildItems)
 
   const Game = {
-    K, ZSPAWN, ZFAR, SAMPLE_Z, JUMP_T, SLIDE_T, proj, GRAV, JUMP_V,
+    K, ZSPAWN, ZFAR, SAMPLE_Z, JUMP_T, SLIDE_T, proj, GRAV, JUMP_V, RAMP_H,
     brain: new Brain(),
     state: 'title', attract: true, god: true, bot: null,
     clock: 0, time: 0, dist: 0, speed: 20, score: 0, coins: 0, best: 0, bestPts: 0, bestPred: 0,
@@ -43,7 +44,7 @@
     g.bailUsed = false; g.autoUsed = false; g.bails = 0; g.jams = 0; g.jamTotal = 6.5; g.nextCoinGap = 0; g.deadT = 0; g.overT = 0; g.newBest = false; g.pts = 0; g.finalPts = 0; g.newBestPts = false; g.nearCount = 0; g.speedTier = 0;
     g.fx = { shake: 0, flash: opts.noflash ? 0 : 0.6, glitch: 0, chroma: 0, freeze: 0, zoom: 0, hurt: 0, eyeFlash: 0, eyeMiss: 0, speedPulse: 1 };
     g.p = { lane: 1, prevLane: 1, x: 1, vx: 0, y: 0, vy: 0, grounded: true, slide: 0, slideBuf: 0, jumpBuf: 0, fast: false, phase: 0,
-            inv: 0, dead: false, foot: false, mvFrom: 1, mvT: 9, mvLane: 1, lean: 0, inLane: [-9, -9, -9], slideStart: -9, jumpStart: -9, landT: -9, switchT: -9 };
+            inv: 0, dead: false, foot: false, ramp: null, pitch: 0, mvFrom: 1, mvT: 9, mvLane: 1, lean: 0, inLane: [-9, -9, -9], slideStart: -9, jumpStart: -9, landT: -9, switchT: -9 };
     g.camX = 0;
     g.heat = 0; g.stars = 0; g.threat = 1; g.riskT = -99; g.topT = 0; g.coolPopT = -99; g.footT = 0; g.footK = 0; g.bikeAnimT = 99; g.regainT = 99; g.bikeAt = 0; g.bikesLost = 0; g.footSecs = 0;
     g.taunt = { text: 'NEW RUNNER DETECTED', t: 0, next: 3.4 };
@@ -262,12 +263,13 @@
       if (res === false && !g.brain.blindOn) { g.fx.eyeMiss = 0.5; }
       if (res === true) g.fx.eyeFlash = 0.35;
     } else if (a === 'J') {
+      if (p.ramp) return;                                  // mid-ramp: the ramp itself launches you off the top
       if (p.slide > 0 && p.grounded) { p.slide = 0; }
       if (p.grounded) {
         const th = g.threatIn(p.lane, 40);
         const onB = th && th.o.type === 'barrier' && th.tti < 0.95;
         g.brain.recordJump(onB ? th.tti : 0, onB);
-        p.vy = JUMP_V; p.y = 0.001; p.grounded = false; p.fast = false; p.jumpStart = g.clock; p.slide = 0;
+        p.vy = JUMP_V; p.y = Math.max(0.001, p.y); p.grounded = false; p.fast = false; p.jumpStart = g.clock; p.slide = 0;
         g.emit('jump');
       } else p.jumpBuf = 0.14;
     } else if (a === 'S') {
@@ -364,10 +366,18 @@
     while (g.q.length) g.doAction(g.q.shift());
 
     // ---- player physics
+    if (p.grounded && p.y > 0.001 && !p.ramp && g.supportTop(p.y) === null) { p.grounded = false; p.vy = 0; }   // ran off the end of a roof: fall
     if (!p.grounded) {
+      const y0 = p.y;
       p.vy -= GRAV * dt * (p.fast ? 2.6 : 1);
       p.y += p.vy * dt;
-      if (p.y <= 0) {
+      const top = p.vy <= 0 && g.rampAir ? g.supportTop(y0) : null;       // after a ramp launch, come down ON a truck / bus / barrier top, not through it
+      if (top !== null && p.y <= top) {
+        p.y = top; p.vy = 0; p.grounded = true; p.fast = false; p.landT = g.clock;
+        g.emit('land');
+        if (p.slideBuf > 0) { g.doAction('S'); }
+        else if (p.jumpBuf > 0) { g.doAction('J'); }
+      } else if (p.y <= 0) {
         p.y = 0; p.vy = 0; p.grounded = true; p.fast = false; p.landT = g.clock; g.rampAir = false;
         g.emit('land');
         if (p.slideBuf > 0) { g.doAction('S'); }
@@ -516,6 +526,17 @@
     g.emit('chip');
   };
 
+  /* height of the highest solid top (truck / bus / van / car roof, barrier) under the player at height y (within a small tolerance), or null */
+  Game.supportTop = function (y) {
+    const g = this, p = g.p; let best = null;
+    for (const o of g.obs) {
+      if (Math.abs(p.x - o.lane) >= 0.56 || !(o.z <= 0.55 && o.z + o.depth >= -0.55)) continue;
+      const top = o.type === 'wall' ? WALL_H[o.vis] : o.type === 'barrier' ? o.h : null;
+      if (top !== null && top !== undefined && y >= top - 0.06 && (best === null || top > best)) best = top;
+    }
+    return best;
+  };
+
   Game.collide = function (dt) {
     const g = this, p = g.p;
     for (const o of g.obs) {
@@ -528,7 +549,7 @@
       }
       if (zOverlap && inLaneNow && !p.dead) {
         let hit = false;
-        if (o.type === 'wall') hit = !(g.rampAir && p.y > WALL_H[o.vis] + 0.15);     // a ramp launch can fly over traffic
+        if (o.type === 'wall') hit = !(g.rampAir && p.y >= WALL_H[o.vis] - 0.06);     // a ramp launch can fly over traffic, or land and stand on its roof
         else if (o.type === 'barrier') { o.minClear = Math.min(o.minClear, p.y - o.h); hit = p.y < o.h - 0.05; }
         else if (o.type === 'beam') { hit = !(p.slide > 0 && p.y < 0.12) && !(g.rampAir && p.y > 2.45); if (!hit && p.slide > 0) o.slid = true; }
         if (hit && g.cloakT > 0 && o.type === 'wall' && o.vis === 'police') hit = false;    // Shadow: police look straight through you
