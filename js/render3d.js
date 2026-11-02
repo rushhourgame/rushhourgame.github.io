@@ -435,8 +435,8 @@
       P.rph = (P.rph || 0) + dt * (9 + (G.speed || 14) * .22); const f = P.rph, s = Math.sin(f), c = Math.cos(f);
       const w = clamp(1 - tb / .55, 0, 1), W = w * w * (3 - 2 * w), ls = Math.max(0, c), rs = Math.max(0, -c);
       const run = { rigX: 0, rigY: .98 + Math.abs(c) * .07, rigZ: 0, torso: -.4, thL: s * 1.1, knL: .3 + .95 * ls, thR: -s * 1.1, knR: .3 + .95 * rs, arL: -s * 1.05, elL: 1.5 - .15 * c * s, arR: s * 1.05, elR: 1.5 + .15 * c * s, head: .3, bob: 0, twist: s * .16, sway: 0 };   // legs & arms in opposite phase, hip bob at 2x stride, forward torso lean, counter-twist
-      const stm = { rigX: -.22 + Math.sin(tb * 16) * .06, rigY: .86, rigZ: 0, torso: -.72, thL: 1.0, knL: .55, thR: -.55, knR: 1.15, arL: 2.4, elL: .35, arR: 1.9, elR: .45, head: .1, bob: 0 };
-      for (const kk in run) t[kk] = run[kk] * (1 - W) + stm[kk] * W;
+      const stm = { rigX: -.22 + Math.sin(tb * 16) * .06, rigY: .86, rigZ: 0, torso: -.72, thL: 1.0, knL: .55, thR: -.55, knR: 1.15, arL: 2.4, elL: .35, arR: 1.9, elR: .45, head: .1, bob: 0, twist: 0, sway: 0 };
+      for (const kk in run) { const v = run[kk] * (1 - W) + (stm[kk] || 0) * W; t[kk] = isFinite(v) ? v : 0; }   // every key must exist in BOTH poses: a missing one made NaN, which poisoned the torso/head/arms (only legs rendered)
       if (sl) { Object.assign(t, { rigY: .62, torso: -1.0, thL: 1.5, knL: 1.5, thR: .9, knR: 1.5, arL: 1.1, arR: 1.1, elL: 1.3, elR: 1.3, head: .6 }); }
       else if (air) { Object.assign(t, { rigY: 1.05, torso: -.2, thL: 1.35, knL: 1.3, thR: -.45, knR: 1.0, arL: 2.5, elL: .3, arR: 2.1, elR: .3 }); }
       P.root.position.z = 0; pitch = air ? .06 : 0;
@@ -458,7 +458,7 @@
     vis.tr = Math.max(0, vis.tr - dt);
     const k = dead ? 1 - Math.exp(-dt * 12) : foot ? 1 - Math.exp(-dt * (tb < .55 ? 20 : vis.tr > 0 ? 15 : 34)) : G.regainT < .35 ? 1 - Math.exp(-dt * 14) : 1 - Math.exp(-dt * (vis.tr > 0 ? 15 : 22));
     const kb = 1 - Math.exp(-dt * 9);          // bank / yaw have their own slower ease (weight of the bike)
-    for (const key in t) pc[key] += ((t[key]) - (pc[key] || 0)) * (key === 'bank' || key === 'yaw' ? kb : k);
+    for (const key in t) { const tv = isFinite(t[key]) ? t[key] : 0; if (!isFinite(pc[key])) pc[key] = tv; pc[key] += (tv - pc[key]) * (key === 'bank' || key === 'yaw' ? kb : k); }   // NaN guard: a bad pose value can never stick in the rig
     const spN = clamp(((G.speed || 0) - 20) / 22, 0, 1), hb = dead ? 0 : Math.sin((foot ? (P.rph || 0) * 2 : ph * 2)) * (.012 + .03 * spN) * (air ? .3 : 1);
     const { rig, torso, aL, aR, lL, lR, root } = P;
     rig.rotation.x = pc.rigX; rig.position.y = pc.rigY; rig.position.z = pc.rigZ; torso.rotation.x = pc.torso + hb * .8; rig.position.y = pc.rigY + (dead ? 0 : vis.sy * .75 + hb * .6); torso.rotation.z = dead ? 0 : -pc.bank * .55;
@@ -1233,10 +1233,12 @@
       }
       camera.position.set(cx, cy, cz); camera.lookAt(lx, ly, lz); camera.rotateZ(rz); return;
     }
+    vis.footK = (vis.footK || 0) + (((p.foot && !dead) ? 1 : 0) - (vis.footK || 0)) * (1 - Math.exp(-dt * 3.5));   // on foot the camera eases in a little closer and lower so the runner reads bigger
+    const fk = vis.footK, fh = fk * (portrait ? 1.3 : .55), fz = fk * (portrait ? 2.9 : 1.2);
     const sk = G.fx.shake * .012;
     let sway = 0; if (G.attract || G.state === 'title') sway = Math.sin(G.clock * .35) * .55;
-    camera.position.set(vis.camX + sway + (rnd() - .5) * sk, cfg.h + p.y * .22 - (p.slide > 0 ? .15 : 0) - dd * .55 + (rnd() - .5) * sk, cfg.z - dd * 1.7);
-    camera.lookAt(vis.camX * .5 + (vis.x - 1) * LW * .25, cfg.ly - dd * .25, cfg.lz);
+    camera.position.set(vis.camX + sway + (rnd() - .5) * sk, cfg.h - fh + p.y * .22 - (p.slide > 0 ? .15 : 0) - dd * .55 + (rnd() - .5) * sk, cfg.z - fz - dd * 1.7);
+    camera.lookAt(vis.camX * .5 + (vis.x - 1) * LW * .25, cfg.ly - fk * .1 - dd * .25, cfg.lz);
     if (!dead) { camera.rotateZ(vis.roll); camera.position.y += Math.sin(p.phase * 2) * .012 * (.4 + sp) - vis.sy * .25; }
   }
 
@@ -1363,7 +1365,7 @@
     stop() { heroOn = false; cancelAnimationFrame(heroRAF); },
     on() { return heroOn; }
   };
-  R.playerPos = () => ({ x: 0, y: 0 });
+  R.playerPos = () => ({ x: 0, y: 0 }); R.dbgP = () => P;   // test hook
   R.layout = () => {};
   R.stats = () => ({ calls: renderer.info.render.calls, tris: renderer.info.render.triangles, ratio, dpr, textures: renderer.info.memory.textures, geometries: renderer.info.memory.geometries });
   /* ---------------------------------------------------------------- feel: camera punch, coin sparkle, shield bubble */
